@@ -1,0 +1,2 @@
+go build ./src/main/gServerWeb.go
+mv gServerWeb /root/servers/WebService
