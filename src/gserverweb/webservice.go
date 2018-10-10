@@ -1,8 +1,8 @@
 package gserverweb
 
 import (
-	"bufio"
-	"bytes"
+	//	"bufio"
+	//	"bytes"
 	"commondef"
 	"fmt"
 	"net/http"
@@ -38,8 +38,8 @@ func Updateserver(w http.ResponseWriter, r *http.Request) {
 	sTempLock := r.FormValue("lock")
 	bTempLockflag := false
 	sBalanceNumber := r.FormValue("balance")
-	if sIp == "" || sNumber == "" || sPort == "" || sTempLock == "" {
-		fmt.Fprintf(w, "update param key is empty!!")
+	if sIp == "" || sNumber == "" || sPort == "" || sTempLock == "" || sBalanceNumber == "" {
+		fmt.Fprintf(w, "update param key is empty!!for %s,%s,%s.%s,%s", sIp, sNumber, sPort, sTempLock, sBalanceNumber)
 		return
 	}
 	iOnlineNumber, okatoi := strconv.Atoi(sNumber)
@@ -72,19 +72,22 @@ func Getserver(w http.ResponseWriter, r *http.Request) {
 	iUpNumber := 0
 	for k, v := range gsInfoMap {
 		t := time.Now()
-		if t.Unix()-v.LastUpdateTime > 15 {
+		if t.Unix()-v.LastUpdateTime > 100000 {
 			delete(gsInfoMap, k)
 		}
 		if !v.BtempLock {
 			if v.BalanceNumber >= v.NowNumber {
+				//	fmt.Println("%s:%d:%d", k, v.BalanceNumber, v.NowNumber)
 				fmt.Fprintf(w, "%s", k)
 				return
 			} else {
 				if sTempKey == "" {
 					sTempKey = k
+					//	fmt.Println("%s,%d,%d", k, v.BalanceNumber, v.NowNumber)
 					iUpNumber = int(v.NowNumber - v.BalanceNumber)
-				} else if iUpNumber < int(v.NowNumber-v.BalanceNumber) {
+				} else if iUpNumber > int(v.NowNumber-v.BalanceNumber) {
 					sTempKey = k
+					//	fmt.Println("%s,%d--%d", k, v.BalanceNumber, v.NowNumber)
 					iUpNumber = int(v.NowNumber - v.BalanceNumber)
 				}
 			}
@@ -95,14 +98,16 @@ func Getserver(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAllServer(w http.ResponseWriter, r *http.Request) {
-	sRes := ""
+	//	sRes := ""
 	for _, v := range gsInfoMap {
-		buf := bytes.NewBuffer(make([]byte, 80))
-		bw := bufio.NewWriter(buf)
-		fmt.Fprintf(bw, "ip:%s port:%s online:%d balance:%d lockflag:%t\n", v.Ip, v.Port, v.NowNumber, v.BalanceNumber, v.BtempLock)
-		bw.Flush()
-		sRes += buf.String()
+		//	buf := bytes.NewBuffer(make([]byte, 50))
+		//	bw := bufio.NewWriter(buf)
+		fmt.Fprintf(w, "ip:%s port:%s online:%d balance:%d lockflag:%t\n", v.Ip, v.Port, v.NowNumber, v.BalanceNumber, v.BtempLock)
+		//	bw.Flush()
+		//	sRes += buf.String()
+		//	fmt.Fprintf(w, "%s", buf.String())
 	}
-	fmt.Fprintf(w, "serverlist:\n%s", sRes)
+	//	fmt.Println([]byte(sRes))
+	//	fmt.Fprintf(w, "serverlist:%s", []byte(sRes))
 	return
 }
