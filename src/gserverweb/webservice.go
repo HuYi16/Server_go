@@ -58,7 +58,7 @@ func Updateserver(w http.ResponseWriter, r *http.Request) {
 		bTempLockflag = true
 	}
 	gsInfoMap[sIp+":"+sPort] = commondef.StServerInfo{Ip: sIp, Port: sPort, LastUpdateTime: time.Now().Unix(), NowNumber: int32(iOnlineNumber), BtempLock: bTempLockflag, BalanceNumber: int32(iBalanceNumber)}
-	fmt.Fprintf(w, "update suc!!")
+	fmt.Fprintf(w, "update suc!!%s,%s", sIp, sPort)
 	return
 }
 

@@ -1,20 +1,20 @@
 package main
 
 import (
+	"fmt"
 	"gservergs"
-	"log"
+	"time"
 )
 
-var stServerInfo ServerInfo
-
 func init() {
-	log.Info("gs main init")
+	fmt.Println("gs main init!!!")
 }
 
 func main() {
 	if gservergs.StartGs() {
-		log.Info("start gs suc")
+		fmt.Println("StartGs suc!!!")
 	} else {
-		log.Info("start gs fail")
+		fmt.Println("StartGs fail!!!")
 	}
+	time.Sleep(10000 * time.Second)
 }
