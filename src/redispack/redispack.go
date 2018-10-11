@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"runtime"
+	"time"
 )
 
 var MAX_POOL_SIZE = 6
@@ -33,7 +34,7 @@ func initRedis(network, address string) redis.Conn {
 				if err != nil {
 					panic(err)
 				}
-				//		defer c.Close()
+				defer c.Close()
 				putRedis(c)
 			}
 		}()
@@ -80,9 +81,87 @@ func redisServer(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func StartRedis() {
+//redispool second method
+
+var (
+	redisPool2 *redis.Pool
+	redishost  string
+)
+
+func initRedisPool2() {
+	fmt.Println("start init pool2")
+	redishost = "127.0.0.1:6379"
+	redisPool2 = &redis.Pool{
+		MaxIdle:     1,
+		MaxActive:   10,
+		IdleTimeout: 180 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			c, err := redis.Dial("tcp", redishost)
+			if err != nil {
+				panic(err)
+				return nil, err
+
+			}
+			//select db
+			//c.Do("SELECT",db)
+			return c, nil
+		},
+	}
+}
+
+func checkPool2() {
+	if nil == redisPool2 {
+		initRedisPool2()
+	}
+}
+func RedisSet(dbid int, key string, value string) bool {
+	if dbid <= 0 || key == "" || value == "" {
+		return false
+	}
+	checkPool2()
+	c := redisPool2.Get()
+	defer c.Close()
+	//	c.Do("SELECT",dbid)
+	dbid = 0
+	_, err := c.Do("SET", key, value)
+	return nil == err
+}
+
+func RedisGet(dbid int, key string) (bool, string) {
+	if dbid <= 0 || key == "" {
+		return false, "para err"
+	}
+	checkPool2()
+	c := redisPool2.Get()
+	defer c.Close()
+	dbid = 0
+	value, err := redis.String(c.Do("GET", key))
+	fmt.Println(value, err)
+	return err == nil, value
+}
+
+func RedisDelete(dbid int, key string) bool {
+	if dbid <= 0 || key == "" {
+		return false
+	}
+	checkPool2()
+	c := redisPool2.Get()
+	defer c.Close()
+	dbid = 0
+	_, err := c.Do("DELETE", key)
+	return err == nil
+}
+func StartRedis() bool {
 	fmt.Println("init redispool")
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	http.HandleFunc("/", redisServer)
 	http.ListenAndServe(":8099", nil)
+	return true
+
+	//	return initRedisPool2()
+}
+
+func StartRedis2() {
+	fmt.Println("init redispool2 method")
+	//	initRedisPool2()
 }
