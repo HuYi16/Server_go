@@ -2,6 +2,7 @@ package gservergs
 
 import (
 	"commondef"
+	"redispack"
 )
 
 var ServerInfo commondef.StServerInfo
@@ -19,5 +20,6 @@ func init() {
 
 func StartGs() bool {
 	go StartTimer()
+	go redispack.StartRedis()
 	return true
 }

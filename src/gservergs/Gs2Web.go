@@ -12,12 +12,12 @@ func update2Web() {
 		iTempLock = 1
 	}
 	url := fmt.Sprintf("http://www.hycxx.top/updateserver?ip=%s&port=%s&online=%d&lock=%d&balance=%d", ServerInfo.Ip, ServerInfo.Port, ServerInfo.NowNumber, iTempLock, ServerInfo.BalanceNumber)
-	res, err := http.Get(url)
+	_, err := http.Get(url)
 	//	fmt.Println(url)
 	if err != nil {
-		fmt.Println("update err!!!", err.Error())
+		//		fmt.Println("update err!!!", err.Error())
 	} else {
-		fmt.Println("update suc!!!", res)
+		//		fmt.Println("update suc!!!", res)
 	}
 }
 
