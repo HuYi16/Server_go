@@ -12,3 +12,17 @@ type StServerInfo struct {
 	BtempLock       bool   //the server is on
 	BstopServerFlag bool   //the flag of server will stop
 }
+
+//threadpool
+
+type StJobInfo struct {
+	RepeatTimes int
+	Job         func()
+}
+
+type StPoolData struct {
+	MaxNum      int
+	StopFlag    bool
+	MaxJobQueue int
+	JobQueue    chan StJobInfo
+}
