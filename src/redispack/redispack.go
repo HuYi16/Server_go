@@ -160,8 +160,3 @@ func StartRedis() bool {
 
 	//	return initRedisPool2()
 }
-
-func StartRedis2() {
-	fmt.Println("init redispool2 method")
-	//	initRedisPool2()
-}

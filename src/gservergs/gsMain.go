@@ -2,8 +2,8 @@ package gservergs
 
 import (
 	"commondef"
-	//	"fmt"
-	"redispack"
+	//"fmt"
+	//"redispack"
 )
 
 var ServerInfo commondef.StServerInfo
@@ -21,10 +21,10 @@ func init() {
 
 func StartGs() bool {
 	go StartTimer()
-	go redispack.StartRedis2()
-	//	redispack.RedisSet(1, "test", "suc")
-	//	redispack.RedisSet(1, "test1", "succ")
-	//	ok, val := redispack.RedisGet(1, "test")
-	//	fmt.Println("test", ok, val)
+	//redispack.StartRedis2()
+	//redispack.RedisSet(1, "test", "suc")
+	//redispack.RedisSet(1, "test1", "succ")
+	//ok, val := redispack.RedisGet(1, "test")
+	//fmt.Println("test", ok, val)
 	return true
 }
