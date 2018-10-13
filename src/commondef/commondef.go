@@ -26,3 +26,10 @@ type StPoolData struct {
 	MaxJobQueue int
 	JobQueue    chan StJobInfo
 }
+
+//sql redis
+type StSqlRedisBaseInfo struct {
+	DBHost     string
+	DBUser     string
+	DBPassWord string
+}

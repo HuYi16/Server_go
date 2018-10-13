@@ -1,6 +1,7 @@
 package redispack
 
 import (
+	"commondef"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"io"
@@ -9,6 +10,9 @@ import (
 	"time"
 )
 
+var hostInfo *commondef.StSqlRedisBaseInfo
+
+//redis pool method one
 var MAX_POOL_SIZE = 6
 var redisPool chan redis.Conn
 
@@ -81,22 +85,35 @@ func redisServer(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func StartRedis() bool {
+	fmt.Println("init redispool")
+	runtime.GOMAXPROCS(runtime.NumCPU())
+	http.HandleFunc("/", redisServer)
+	http.ListenAndServe(":8099", nil)
+	return true
+
+	//	return initRedisPool2()
+}
+
 //redispool second method
 
 var (
 	redisPool2 *redis.Pool
-	redishost  string
 )
 
 func initRedisPool2() {
 	fmt.Println("start init pool2")
-	redishost = "127.0.0.1:6379"
+	if nil == hostInfo {
+		hostInfo = &commondef.StSqlRedisBaseInfo{
+			DBHost: "127.0.0.1:6379",
+		}
+	}
 	redisPool2 = &redis.Pool{
 		MaxIdle:     1,
 		MaxActive:   10,
 		IdleTimeout: 180 * time.Second,
 		Dial: func() (redis.Conn, error) {
-			c, err := redis.Dial("tcp", redishost)
+			c, err := redis.Dial("tcp", hostInfo.DBHost)
 			if err != nil {
 				panic(err)
 				return nil, err
@@ -136,7 +153,7 @@ func RedisGet(dbid int, key string) (bool, string) {
 	defer c.Close()
 	dbid = 0
 	value, err := redis.String(c.Do("GET", key))
-	fmt.Println(value, err)
+	//	fmt.Println(value, err)
 	return err == nil, value
 }
 
@@ -151,12 +168,14 @@ func RedisDelete(dbid int, key string) bool {
 	_, err := c.Do("DELETE", key)
 	return err == nil
 }
-func StartRedis() bool {
-	fmt.Println("init redispool")
-	runtime.GOMAXPROCS(runtime.NumCPU())
-	http.HandleFunc("/", redisServer)
-	http.ListenAndServe(":8099", nil)
-	return true
 
-	//	return initRedisPool2()
+func SetRedisBaseInfo(host, user, psw string) bool {
+	if host == "" {
+		return false
+	}
+	fmt.Println("redis set host", host, user, psw)
+	if nil == hostInfo {
+		hostInfo = &commondef.StSqlRedisBaseInfo{host, user, psw}
+	}
+	return true
 }

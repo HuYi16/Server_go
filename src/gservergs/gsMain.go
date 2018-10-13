@@ -2,8 +2,8 @@ package gservergs
 
 import (
 	"commondef"
-	//	"fmt"
-	//	"redispack"
+	"fmt"
+	"redispack"
 	"threadpool"
 	//	"time"
 )
@@ -36,10 +36,11 @@ func Job3() {
 }*/
 func StartGs() bool {
 	go StartTimer()
-	//	redispack.RedisSet(1, "test", "suc")
-	//	redispack.RedisSet(1, "test1", "succ")
-	//	ok, val := redispack.RedisGet(1, "test")
-	//	fmt.Println("test", ok, val)
+	redispack.SetRedisBaseInfo("127.0.0.1:6379", "", "")
+	redispack.RedisSet(1, "test", "suc")
+	redispack.RedisSet(1, "test1", "succ")
+	ok, val := redispack.RedisGet(1, "test")
+	fmt.Println("test", ok, val)
 	//	threadpool.SetThreadNum(3)
 	threadpool.StartThreadPool()
 	/*	job1 := commondef.StJobInfo{
