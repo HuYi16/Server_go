@@ -32,4 +32,6 @@ type StSqlRedisBaseInfo struct {
 	DBHost     string
 	DBUser     string
 	DBPassWord string
+	DBName     string
+	DBPort     int
 }

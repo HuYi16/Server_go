@@ -175,7 +175,7 @@ func SetRedisBaseInfo(host, user, psw string) bool {
 	}
 	fmt.Println("redis set host", host, user, psw)
 	if nil == hostInfo {
-		hostInfo = &commondef.StSqlRedisBaseInfo{host, user, psw}
+		hostInfo = &commondef.StSqlRedisBaseInfo{host, user, psw, "", 0}
 	}
 	return true
 }
