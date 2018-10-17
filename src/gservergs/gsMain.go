@@ -37,6 +37,7 @@ func Job3() {
 }*/
 func StartGs() bool {
 	go StartTimer()
+	//redis test
 	redispack.SetRedisBaseInfo("127.0.0.1:6379", "", "")
 	redispack.RedisSet(1, "test", "suc")
 	redispack.RedisSet(1, "test1", "succ")
@@ -46,10 +47,15 @@ func StartGs() bool {
 	threadpool.StartThreadPool()
 	key := sqlpart.StartSql(commondef.StSqlRedisBaseInfo{"127.0.0.1", "root", "huyi65", "hygame", 3306})
 	fmt.Println("key is ", key)
-	sqlpart.SqlNotQuery(key, fmt.Sprintf("insert into test values(%d.%s,%d)", 2, "test2", 3))
-	res, ok := sqlpart.SqlSelect(key, "select * from test")
-	fmt.Println(res)
-	/*	job1 := commondef.StJobInfo{
+	/*
+		//DB test
+		sqlpart.SqlNotQuery(key, fmt.Sprintf("insert into test values(%d,'%s',%d)", 2, "test2", 3))
+		res, ok := sqlpart.SqlSelect(key, "select * from test")
+		fmt.Println(res)
+	*/
+	/*
+		// threadpool test
+		job1 := commondef.StJobInfo{
 			RepeatTimes: 10,
 			Job:         Job1,
 		}

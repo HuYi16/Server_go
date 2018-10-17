@@ -15,8 +15,16 @@ func init() {
 }
 
 func connctDB(key string, arg commondef.StSqlRedisBaseInfo) bool {
-	info := fmt.Sprintf("%s:%s@/tcp(%s:%d)/%s", arg.DBUser, arg.DBPassWord, arg.DBHost, arg.DBPort, arg.DBName)
-	db, err := sql.Open("mysql", info)
+	sqlName := "mysql"
+	/*
+		if len(mapDBIndex) >= 1 {
+			sqlName = fmt.Sprintf("mysql%d", len(mapDBIndex))
+			sql.Register(sqlName, &sql.MySQLDriver{})
+		}
+	*/
+	info := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8", arg.DBUser, arg.DBPassWord, arg.DBHost, arg.DBPort, arg.DBName)
+	db, err := sql.Open(sqlName, info)
+	fmt.Println("err:", err, "info:", info)
 	if err == nil {
 		fmt.Println("connect db ", info, " suc!!!")
 		mapDBIndex[key] = db
