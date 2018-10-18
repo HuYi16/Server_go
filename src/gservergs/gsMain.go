@@ -3,6 +3,7 @@ package gservergs
 import (
 	"commondef"
 	"fmt"
+	"net"
 	"redispack"
 	"sqlpart"
 	"threadpool"
@@ -35,6 +36,29 @@ func Job3() {
 	fmt.Println("job3 test")
 	time.Sleep(2 * time.Second)
 }*/
+func JobReadData() {
+
+}
+func StartServer() bool {
+	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", ServerInfo.Ip, ServerInfo.Port))
+	if err != nil {
+		fmt.Println("listen fail!!")
+		panic(err)
+		return false
+	}
+	job := commondef.StJobInfo{
+		RepeatTimes: -1,
+		Job:         JobReadData,
+	}
+	for {
+		conn, err := listener.Accept()
+		if nil != err {
+			fmt.Println("accept client fail", err)
+		} else {
+
+		}
+	}
+}
 func StartGs() bool {
 	go StartTimer()
 	//redis test
