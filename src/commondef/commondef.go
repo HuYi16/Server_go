@@ -35,3 +35,9 @@ type StSqlRedisBaseInfo struct {
 	DBName     string
 	DBPort     int
 }
+
+//clent info
+type ClientNetInfo struct {
+	UserId   int
+	SocketId int
+}

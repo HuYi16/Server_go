@@ -11,6 +11,8 @@ import (
 )
 
 var ServerInfo commondef.StServerInfo
+var ClientSocketInfoMap chan map[int]int64
+var ClientUserIdInfoMap chan map[int]commondef.ClientNetInfo
 
 func LoadConfig() {
 	ServerInfo.Ip = "47.106.141.213"
@@ -21,6 +23,8 @@ func LoadConfig() {
 }
 func init() {
 	LoadConfig()
+	ClinetSocketInfoMap = make(chan map[int]int64)
+	ClinetUserIdInfoMap = make(chan map[int]commondef.ClientNetInfo)
 }
 
 /*
@@ -59,6 +63,7 @@ func StartServer() bool {
 		}
 	}
 }
+
 func StartGs() bool {
 	go StartTimer()
 	//redis test
