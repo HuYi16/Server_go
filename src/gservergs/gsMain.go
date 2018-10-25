@@ -3,8 +3,9 @@ package gservergs
 import (
 	"commondef"
 	"fmt"
-	"net"
+	//	"net"
 	"redispack"
+	"serverpart"
 	"sqlpart"
 	"threadpool"
 	//	"time"
@@ -23,8 +24,8 @@ func LoadConfig() {
 }
 func init() {
 	LoadConfig()
-	ClinetSocketInfoMap = make(chan map[int]int64)
-	ClinetUserIdInfoMap = make(chan map[int]commondef.ClientNetInfo)
+	ClientSocketInfoMap = make(chan map[int]int64)
+	ClientUserIdInfoMap = make(chan map[int]commondef.ClientNetInfo)
 }
 
 /*
@@ -40,6 +41,7 @@ func Job3() {
 	fmt.Println("job3 test")
 	time.Sleep(2 * time.Second)
 }*/
+/*
 func JobReadData() {
 
 }
@@ -63,6 +65,14 @@ func StartServer() bool {
 		}
 	}
 }
+*/
+func ReadData(id int64, msg []byte, len int) {
+	fmt.Println("recv data", msg)
+}
+
+func DisConn(id int64) {
+	fmt.Println("client closed", id)
+}
 
 func StartGs() bool {
 	go StartTimer()
@@ -76,6 +86,10 @@ func StartGs() bool {
 	threadpool.StartThreadPool()
 	key := sqlpart.StartSql(commondef.StSqlRedisBaseInfo{"127.0.0.1", "root", "huyi65", "hygame", 3306})
 	fmt.Println("key is ", key)
+	serverpart.SetCallDisConn(DisConn)
+	serverpart.SetCallRead(ReadData)
+	serverpart.SetIpPort("127.0.0.1", "8099")
+	serverpart.StartServer()
 	/*
 		//DB test
 		sqlpart.SqlNotQuery(key, fmt.Sprintf("insert into test values(%d,'%s',%d)", 2, "test2", 3))

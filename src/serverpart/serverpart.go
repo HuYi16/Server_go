@@ -1,10 +1,10 @@
 package serverpart
 
 import (
-	"encoding/binary"
 	"fmt"
 	"net"
-	"threadpool"
+	//	"threadpool"
+	"strconv"
 	"unsafe"
 )
 
@@ -14,43 +14,42 @@ const (
 	MAX_LEN = 1024
 )
 
+type ReadCallBackFun func(index int64, msg []byte, len int)
+type DisConnCallBackFun func(index int64)
 type StServerInfo struct {
 	Index           int64
 	ServerIp        string
 	ServerPort      string
 	ThreadMode      int //1 use go   2 use threadpool
-	DisConnCallBack interface{}
-	ReadCallBack    interface{}
-	OnlineMap4Self  map[int64]net.Conn
-	OnlineMap4Other map[net.Conn]int64
+	DisConnCallBack DisConnCallBackFun
+	ReadCallBack    ReadCallBackFun
+	OnlineMap       map[int64]net.Conn
 }
 
 var stInfo StServerInfo
 
 func (arg *StServerInfo) AddOnlineInfo(val net.Conn) int64 {
-	Index++
-	arg.OnlineMap4Self[Index] = val
-	arg.OnlineMap4Other[val] = Index
-	return Index
+	arg.Index++
+	arg.OnlineMap[arg.Index] = val
+	return arg.Index
 }
 
 func (arg *StServerInfo) ReMoveOnlineInfo(conn net.Conn) {
-	val, ok := arg.OnlineMap4Other[conn]
-	if ok {
-		delete(key, arg.OnlineMap4Other)
-		val1, ok1 := arg.OnlineMap4Self[val]
-		if ok1 {
-			delete(val1, arg.OnlineMap4OSelf)
+	for v, k := range arg.OnlineMap {
+		if k == conn {
+			delete(arg.OnlineMap, v)
+			return
 		}
 	}
 }
 
 func (arg *StServerInfo) GetSocketId(key int64) (net.Conn, bool) {
-	return arg.OnlineMap4Self[key]
+	val, ok := arg.OnlineMap[key]
+	return val, ok
 }
 
 func (arg *StServerInfo) Check() bool {
-	if arg.OnlineMap4Self == nil || arg.OnlineMap4Other == nil || ServerIp == "" || ServerPort == "" || DisConCallBack == nil || ReadCallBack == nil {
+	if arg.OnlineMap == nil || arg.ServerIp == "" || arg.ServerPort == "" || arg.DisConnCallBack == nil || arg.ReadCallBack == nil {
 		return false
 	}
 	return true
@@ -64,7 +63,7 @@ func (arg *StServerInfo) SetIpPort(ip, port string) bool {
 	return true
 }
 
-func (arg *StServerInfo) SetCallDisConn(disconn interface{}) bool {
+func (arg *StServerInfo) SetCallDisConn(disconn DisConnCallBackFun) bool {
 	if disconn != nil {
 		arg.DisConnCallBack = disconn
 	} else {
@@ -73,7 +72,7 @@ func (arg *StServerInfo) SetCallDisConn(disconn interface{}) bool {
 	return true
 }
 
-func (arg *StServerInfo) SetCallRead(read interface{}) bool {
+func (arg *StServerInfo) SetCallRead(read ReadCallBackFun) bool {
 	if read != nil {
 		arg.ReadCallBack = read
 	} else {
@@ -85,21 +84,20 @@ func (arg *StServerInfo) SetCallRead(read interface{}) bool {
 func init() {
 	fmt.Println("inti server")
 	stInfo = StServerInfo{
-		OnlineMap4Self:  make(map[int64]net.Conn),
-		OnlineMap4Other: make(map[net.Conn]int64),
-		Index:           10241111,
-		ThreadMode:      GoMode,
+		OnlineMap:  make(map[int64]net.Conn),
+		Index:      10241111,
+		ThreadMode: GoMode,
 	}
 }
 func SetIpPort(ip, port string) bool {
 	return stInfo.SetIpPort(ip, port)
 }
 
-func SetCallRead(callback interface{}) bool {
+func SetCallRead(callback ReadCallBackFun) bool {
 	return stInfo.SetCallRead(callback)
 }
 
-func SetCallDisConn(callback interface{}) bool {
+func SetCallDisConn(callback DisConnCallBackFun) bool {
 	return stInfo.SetCallDisConn(callback)
 }
 func SetThreadMode(Mode int) bool {
@@ -122,21 +120,25 @@ func GoModeDoReadLoop(conn net.Conn, id int64) {
 	return
 }
 func DoRead(conn net.Conn, id int64) bool {
-	info := make([]byte, unsafe.Sizeof(int32))
-	len, err := conn.Read(info)
+	var t int32
+	info := make([]byte, unsafe.Sizeof(t))
+	_, err := conn.Read(info)
 	res := readWriteErr(err)
 	if res == 0 {
-		stInfo.RemoveOnlineInfo(conn)
+		stInfo.ReMoveOnlineInfo(conn)
 		return false
 	}
-	var msglen int32
-	binary.Read(info, binary.BigEndian, &msglen)
+	msglen, err := strconv.Atoi(string(info))
+	if err != nil {
+		stInfo.ReMoveOnlineInfo(conn)
+		return false
+	}
 	if msglen != 0 {
 		tempbuf := make([]byte, msglen+1)
-		len, err := conn.Read(tempbuf)
+		_, err := conn.Read(tempbuf)
 		res := readWriteErr(err)
 		if res == 0 {
-			stInfo.RemoveOnlineInfo(conn)
+			stInfo.ReMoveOnlineInfo(conn)
 			return false
 		} else {
 			stInfo.ReadCallBack(id, tempbuf, msglen)
@@ -172,12 +174,13 @@ func StartServer() bool {
 		fmt.Println("server base info not init!!!")
 		return false
 	}
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", Ip, Port))
+	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", stInfo.ServerIp, stInfo.ServerPort))
 	if err != nil {
 		fmt.Println("lisetn fail!!", err)
 		return false
 	}
 	for {
+		fmt.Println("start Accept")
 		conn, err := listener.Accept()
 		if err == nil {
 			id := stInfo.AddOnlineInfo(conn)
