@@ -40,7 +40,7 @@ func threadWork(id int) {
 		task, ok := <-stPoolInfo.JobQueue
 		if ok {
 			if task.RepeatTimes > 0 || task.RepeatTimes == -1 {
-				task.Job()
+				task.Job(task.ArgList)
 				if task.RepeatTimes == -1 || task.RepeatTimes-1 > 0 {
 					if task.RepeatTimes > 0 {
 						task.RepeatTimes--

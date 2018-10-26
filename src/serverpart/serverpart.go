@@ -1,10 +1,12 @@
 package serverpart
 
 import (
+	"commondef"
 	"fmt"
 	"net"
-	//	"threadpool"
 	"strconv"
+	"threadpool"
+	"time"
 	"unsafe"
 )
 
@@ -16,6 +18,7 @@ const (
 
 type ReadCallBackFun func(index int64, msg []byte, len int)
 type DisConnCallBackFun func(index int64)
+
 type StServerInfo struct {
 	Index           int64
 	ServerIp        string
@@ -119,6 +122,15 @@ func GoModeDoReadLoop(conn net.Conn, id int64) {
 	stInfo.DisConnCallBack(id)
 	return
 }
+func ThreadModeReadLoop(arg interface{}) {
+	for k, v := range stInfo.OnlineMap {
+		v.SetReadDeadline(time.Now().Add(1 * time.Millisecond))
+		res := DoRead(v, k)
+		if !res {
+			v.Close()
+		}
+	}
+}
 func DoRead(conn net.Conn, id int64) bool {
 	var t int32
 	info := make([]byte, unsafe.Sizeof(t))
@@ -180,15 +192,21 @@ func StartServer() bool {
 		return false
 	}
 	for {
-		fmt.Println("start Accept")
+		fmt.Println("start accept")
 		conn, err := listener.Accept()
 		if err == nil {
 			id := stInfo.AddOnlineInfo(conn)
 			if stInfo.ThreadMode == GoMode {
 				go GoModeDoReadLoop(conn, id)
+				return true
 			} else {
 				//thread mode
-
+				job := commondef.StJobInfo{
+					RepeatTimes: -1,
+					Job:         ThreadModeReadLoop,
+				}
+				threadpool.AddTask(job)
+				return true
 			}
 		}
 	}

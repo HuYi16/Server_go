@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"gservergs"
-	"time"
+	//"time"
 )
 
 func init() {
@@ -16,5 +16,6 @@ func main() {
 	} else {
 		fmt.Println("StartGs fail!!!")
 	}
-	time.Sleep(10000 * time.Second)
+	fmt.Println("end !!!!!!")
+	//	time.Sleep(10000 * time.Second)
 }

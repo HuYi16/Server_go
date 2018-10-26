@@ -17,7 +17,8 @@ type StServerInfo struct {
 
 type StJobInfo struct {
 	RepeatTimes int
-	Job         func()
+	Job         func(arg interface{})
+	ArgList     interface{}
 }
 
 type StPoolData struct {

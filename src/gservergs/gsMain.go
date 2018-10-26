@@ -8,7 +8,7 @@ import (
 	"serverpart"
 	"sqlpart"
 	"threadpool"
-	//	"time"
+	"time"
 )
 
 var ServerInfo commondef.StServerInfo
@@ -29,18 +29,35 @@ func init() {
 }
 
 /*
-func Job1() {
-	fmt.Println("job1 test")
+type test struct {
+	Id   int
+	Name string
+}
+
+func Job1(arg interface{}) {
+	val, ok := arg.(test)
+	if !ok {
+		fmt.Println("mode 1 type err")
+		return
+	}
+	fmt.Println("mode 1 arg is ", val.Id, "--", val.Name)
+	switch val := arg.(type) {
+	case test:
+		fmt.Println("mode 2 arg is", val.Id, val.Name)
+	default:
+		fmt.Println("mode 2 arg err")
+	}
 	time.Sleep(1 * time.Second)
 }
-func Job2() {
+func Job2(arg interface{}) {
 	fmt.Println("job2 test")
 	time.Sleep(3 * time.Second)
 }
-func Job3() {
+func Job3(arg interface{}) {
 	fmt.Println("job3 test")
 	time.Sleep(2 * time.Second)
-}*/
+}
+*/
 /*
 func JobReadData() {
 
@@ -67,7 +84,7 @@ func StartServer() bool {
 }
 */
 func ReadData(id int64, msg []byte, len int) {
-	fmt.Println("recv data", msg)
+	fmt.Println("recv data_len:", len)
 }
 
 func DisConn(id int64) {
@@ -86,10 +103,6 @@ func StartGs() bool {
 	threadpool.StartThreadPool()
 	key := sqlpart.StartSql(commondef.StSqlRedisBaseInfo{"127.0.0.1", "root", "huyi65", "hygame", 3306})
 	fmt.Println("key is ", key)
-	serverpart.SetCallDisConn(DisConn)
-	serverpart.SetCallRead(ReadData)
-	serverpart.SetIpPort("127.0.0.1", "8099")
-	serverpart.StartServer()
 	/*
 		//DB test
 		sqlpart.SqlNotQuery(key, fmt.Sprintf("insert into test values(%d,'%s',%d)", 2, "test2", 3))
@@ -98,9 +111,15 @@ func StartGs() bool {
 	*/
 	/*
 		// threadpool test
+		t := test{
+			Id:   4,
+			Name: "huyi",
+		}
+		var arglist interface{} = t
 		job1 := commondef.StJobInfo{
 			RepeatTimes: 10,
 			Job:         Job1,
+			ArgList:     arglist,
 		}
 		job2 := commondef.StJobInfo{
 			RepeatTimes: 20,
@@ -114,6 +133,10 @@ func StartGs() bool {
 		threadpool.AddTask(job2)
 		threadpool.AddTask(job3)
 	*/
+	serverpart.SetCallDisConn(DisConn)
+	serverpart.SetCallRead(ReadData)
+	serverpart.SetIpPort("127.0.0.1", "8099")
+	serverpart.StartServer()
 	//	time.Sleep(10 * time.Second)
 	//threadpool.StopThreadPool()
 	return true
