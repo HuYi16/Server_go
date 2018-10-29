@@ -42,3 +42,11 @@ type ClientNetInfo struct {
 	UserId   int
 	SocketId int
 }
+
+//msg head
+type MsgHead struct {
+	MainId       int
+	SubId        int
+	ToServerId   int
+	FromServerId int
+}
