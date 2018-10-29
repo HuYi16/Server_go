@@ -12,8 +12,6 @@ import (
 )
 
 var ServerInfo commondef.StServerInfo
-var ClientSocketInfoMap chan map[int]int64
-var ClientUserIdInfoMap chan map[int]commondef.ClientNetInfo
 
 func LoadConfig() {
 	ServerInfo.Ip = "47.106.141.213"
@@ -24,8 +22,6 @@ func LoadConfig() {
 }
 func init() {
 	LoadConfig()
-	ClientSocketInfoMap = make(chan map[int]int64)
-	ClientUserIdInfoMap = make(chan map[int]commondef.ClientNetInfo)
 }
 
 /*
@@ -83,13 +79,6 @@ func StartServer() bool {
 	}
 }
 */
-func ReadData(id int64, msg []byte, len int) {
-	fmt.Println("recv data_len:", len)
-}
-
-func DisConn(id int64) {
-	fmt.Println("client closed", id)
-}
 
 func StartGs() bool {
 	go StartTimer()
