@@ -10,6 +10,13 @@ import (
 	"unsafe"
 )
 
+type MsgHead struct {
+	MainId       int
+	SubId        int
+	ToServerId   int
+	FromServerId int
+}
+
 const (
 	GoMode = iota
 	PoolMode
@@ -130,6 +137,14 @@ func ThreadModeReadLoop(arg interface{}) {
 			v.Close()
 		}
 	}
+}
+func CloseSocket(soketid int64) {
+	v, ok := stInfo.OnlineMap[socketid]
+	if ok {
+		delete(stInfo.OnlineMap, socketid)
+		v.Close()
+	}
+	return
 }
 func DoRead(conn net.Conn, id int64) bool {
 	var t int32
