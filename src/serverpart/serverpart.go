@@ -4,17 +4,15 @@ import (
 	"commondef"
 	"fmt"
 	"net"
-	"strconv"
 	"threadpool"
 	"time"
 	"unsafe"
 )
 
 type MsgHead struct {
-	MainId       int
-	SubId        int
-	ToServerId   int
-	FromServerId int
+	Key        string
+	ToServerId int
+	Len        int
 }
 
 const (
@@ -23,7 +21,7 @@ const (
 	MAX_LEN = 1024
 )
 
-type ReadCallBackFun func(index int64, msg []byte, len int)
+type ReadCallBackFun func(index int64, head MsgHead, msgBody []byte)
 type DisConnCallBackFun func(index int64)
 
 type StServerInfo struct {
@@ -138,7 +136,7 @@ func ThreadModeReadLoop(arg interface{}) {
 		}
 	}
 }
-func CloseSocket(soketid int64) {
+func CloseSocket(socketid int64) {
 	v, ok := stInfo.OnlineMap[socketid]
 	if ok {
 		delete(stInfo.OnlineMap, socketid)
@@ -146,39 +144,75 @@ func CloseSocket(soketid int64) {
 	}
 	return
 }
-func DoRead(conn net.Conn, id int64) bool {
-	var t int32
-	info := make([]byte, unsafe.Sizeof(t))
-	_, err := conn.Read(info)
-	res := readWriteErr(err)
-	if res == 0 {
-		stInfo.ReMoveOnlineInfo(conn)
-		return false
+func readDataNum(conn net.Conn, msglen int) ([]byte, bool) {
+	if nil == conn || msglen == 0 {
+		return nil, false
 	}
-	msglen, err := strconv.Atoi(string(info))
-	if err != nil {
-		stInfo.ReMoveOnlineInfo(conn)
-		return false
-	}
-	if msglen != 0 {
-		tempbuf := make([]byte, msglen+1)
-		_, err := conn.Read(tempbuf)
+	nowlen := 0
+	info := make([]byte, msglen)
+	for msglen > nowlen {
+		len, err := conn.Read(info[nowlen:])
 		res := readWriteErr(err)
 		if res == 0 {
 			stInfo.ReMoveOnlineInfo(conn)
+			return nil, false
+		}
+		nowlen += len
+	}
+	return info, true
+}
+
+type SliceMock struct {
+	Addr uintptr
+	Len  int
+	Cap  int
+}
+
+func DoRead(conn net.Conn, id int64) bool {
+	head := MsgHead{}
+	headlen := unsafe.Sizeof(head)
+	buf, ok := readDataNum(conn, int(headlen))
+	if !ok {
+		return false
+	}
+	/*
+		tempBytes := &SliceMock{
+			Addr: uintptr(unsafe.Pointer(&head)),
+			Len:  int(headlen),
+			Cap:  int(headlen),
+		}
+		data := *(*[]byte)(unsafe.Pointer(tempBytes))
+	*/
+	head = **(**MsgHead)(unsafe.Pointer(&buf))
+	if head.Len != 0 {
+		msgbuf, msgok := readDataNum(conn, head.Len)
+		if !msgok {
+			fmt.Println("read data msg fail!!")
 			return false
 		} else {
-			stInfo.ReadCallBack(id, tempbuf, msglen)
+			stInfo.ReadCallBack(id, head, msgbuf)
 			return true
 		}
 	}
 	return true
 }
 
-func Write(id int64, msg []byte) bool {
+func Write(id int64, msg []byte, serverid int, len int) bool {
 	val, ok := stInfo.GetSocketId(id)
+	head := MsgHead{
+		Len:        len,
+		ToServerId: serverid,
+	}
+	headlen := unsafe.Sizeof(head)
+	tempBytes := &SliceMock{
+		Addr: uintptr(unsafe.Pointer(&head)),
+		Len:  int(headlen),
+		Cap:  int(headlen),
+	}
+	wmsg := *(*[]byte)(unsafe.Pointer(tempBytes))
+	wmsg = append(wmsg, msg...)
 	if ok {
-		val.Write(msg)
+		val.Write(wmsg)
 		return true
 	}
 	return false
