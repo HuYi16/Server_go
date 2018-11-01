@@ -34,11 +34,25 @@ var OnlineInfo map[int]map[int64]NetInfo
 
 func init() {
 	OnlineInfo = make(map[int]map[int64]NetInfo)
+	go StartCheckOnline()
 }
 
+func StartCheckOnline() {
+	ticktimer := time.NewTicker(1 * time.Second)
+	for {
+		select {
+		case <-ticktimer.C:
+			checkOnline()
+			//wait for a end flag
+		}
+	}
+}
 func cheackOnline() {
 	for k, v := range OnlineInfo {
 		for kk, vv := range v {
+			if vv.LastMsgTime+5 < time.Now().Unix() {
+				SendHeartBeat(kk)
+			}
 			if vv.LastMsgTime+10 < time.Now().Unix() {
 				//send heat beat
 				serverpart.CloseSocket(kk)
@@ -52,7 +66,9 @@ func cheackOnline() {
 	}
 	return
 }
-
+func SendHeartBeat(id int64) {
+	return
+}
 func checkKey(id int64, head serverpart.MsgHead) bool {
 	for _, v := range OnlineInfo {
 		vv, ok := v[id]

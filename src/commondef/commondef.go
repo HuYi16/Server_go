@@ -2,6 +2,14 @@
 
 package commondef
 
+//fun  struct2[]byte
+
+type SliceMock struct {
+	addr uintptr
+	len  int
+	cap  int
+}
+
 //server
 type StServerInfo struct {
 	Ip              string //ip of server

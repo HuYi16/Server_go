@@ -162,12 +162,6 @@ func readDataNum(conn net.Conn, msglen int) ([]byte, bool) {
 	return info, true
 }
 
-type SliceMock struct {
-	Addr uintptr
-	Len  int
-	Cap  int
-}
-
 func DoRead(conn net.Conn, id int64) bool {
 	head := MsgHead{}
 	headlen := unsafe.Sizeof(head)
@@ -204,10 +198,10 @@ func Write(id int64, msg []byte, serverid int, len int) bool {
 		ToServerId: serverid,
 	}
 	headlen := unsafe.Sizeof(head)
-	tempBytes := &SliceMock{
-		Addr: uintptr(unsafe.Pointer(&head)),
-		Len:  int(headlen),
-		Cap:  int(headlen),
+	tempBytes := &commondef.SliceMock{
+		addr: uintptr(unsafe.Pointer(&head)),
+		len:  int(headlen),
+		cap:  int(headlen),
 	}
 	wmsg := *(*[]byte)(unsafe.Pointer(tempBytes))
 	wmsg = append(wmsg, msg...)
