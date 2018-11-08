@@ -224,6 +224,7 @@ func readWriteErr(err error) int {
 	}
 	return 1
 }
+
 func StartServer() bool {
 	if !stInfo.Check() {
 		fmt.Println("server base info not init!!!")
@@ -254,4 +255,8 @@ func StartServer() bool {
 		}
 	}
 	return false
+}
+
+func StartClient() bool {
+
 }
