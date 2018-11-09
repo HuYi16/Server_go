@@ -3,6 +3,7 @@ package serverpart
 import (
 	"fmt"
 	"net"
+	"sync"
 	"time"
 	"unsafe"
 )
@@ -40,6 +41,10 @@ type NetCn struct {
 	disCallBack    DisFunc
 	readCallBack   ReadFunc
 	onlineMap      map[int64]clientInfo
+	llMaxAcceptNum int64
+	llNowAcceptNum int64
+	lock           sync.Mutex
+	listener       net.Listener
 }
 
 func (this *NetCn) addOnlineNode(conn net.Conn) int64 {
@@ -51,6 +56,12 @@ func (this *NetCn) addOnlineNode(conn net.Conn) int64 {
 	return this.index
 }
 
+func (this *NetCn) nowAcceptNumChange(val int64) {
+	this.lock.Lock()
+	this.llNowAcceptNum += val
+	this.lock.Unlock()
+}
+
 func (this *NetCn) removeOnlineNode(conn net.Conn) {
 	for k, v := range this.onlineMap {
 		if v.ConnId == conn {
@@ -59,6 +70,7 @@ func (this *NetCn) removeOnlineNode(conn net.Conn) {
 				this.disCallBack(k)
 			}
 			delete(this.onlineMap, k)
+			this.nowAcceptNumChange(-1)
 			return
 		}
 	}
@@ -86,6 +98,7 @@ func (this *NetCn) doReadLoop(conn net.Conn, id int64) {
 			break
 		}
 	}
+	this.removeOnlineNode(conn)
 	return
 }
 
@@ -195,7 +208,8 @@ func (this *NetCn) startServer() bool {
 		fmt.Println("base ifno not init!!")
 		return false
 	}
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", this.ip, this.port))
+	var err error
+	this.listener, err = net.Listen("tcp", fmt.Sprintf("%s:%s", this.ip, this.port))
 	if err != nil {
 		fmt.Println("listen fail!!", err)
 		return false
@@ -203,10 +217,20 @@ func (this *NetCn) startServer() bool {
 	go this.checkOnline()
 	for {
 		fmt.Println("start accept!!!")
-		conn, err := listener.Accept()
+		conn, err := this.listener.Accept()
 		if err == nil {
-			id := this.addOnlineNode(conn)
-			go this.doReadLoop(conn, id)
+			if this.llMaxAcceptNum == -1 || this.llMaxAcceptNum > this.llNowAcceptNum {
+				id := this.addOnlineNode(conn)
+				go this.doReadLoop(conn, id)
+				this.nowAcceptNumChange(1)
+			} else {
+				conn.Close()
+			}
+		} else {
+			if this.listener == nil {
+				fmt.Println("stop server")
+				break
+			}
 		}
 	}
 	return true
@@ -259,10 +283,29 @@ func (this *NetCn) CreateNetCn(ip, port string, disFun DisFunc, readFun ReadFunc
 	this.port = port
 	this.index = 1024111
 	this.onlineMap = make(map[int64]clientInfo)
+	this.llMaxAcceptNum = -1 //no limit
+	this.llNowAcceptNum = 0
 }
 func (this *NetCn) Start() bool {
 	if this.bServerService {
 		return this.startServer()
 	}
 	return this.startClient()
+}
+
+func (this *NetCn) SetMaxAcceptNum(llMaxNum int64) {
+	this.llMaxAcceptNum = llMaxNum
+}
+
+func (this *NetCn) Stop() {
+	for k, v := range this.onlineMap {
+		v.ConnId.Close()
+		if nil != this.disCallBack {
+			this.disCallBack(k)
+		}
+		delete(this.onlineMap, k)
+		this.nowAcceptNumChange(-1)
+	}
+	this.listener.Close()
+	this.listener = nil
 }
