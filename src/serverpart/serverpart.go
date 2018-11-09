@@ -1,160 +1,114 @@
 package serverpart
 
 import (
-	"commondef"
 	"fmt"
 	"net"
-	"threadpool"
 	"time"
 	"unsafe"
 )
 
+type FakeSlice struct {
+	addr uintptr
+	len  int
+	cap  int
+}
+
 type MsgHead struct {
-	Key        string
+	Key        float64
 	ToServerId int
-	Len        int
+	BodyLen    int
+	BHeartMsg  bool
+}
+
+type clientInfo struct {
+	ConnId      net.Conn
+	LastMsgTime int64
 }
 
 const (
-	GoMode = iota
-	PoolMode
 	MAX_LEN = 1024
 )
 
-type ReadCallBackFun func(index int64, head MsgHead, msgBody []byte)
-type DisConnCallBackFun func(index int64)
+type ReadFunc func(index int64, head MsgHead, msgBody []byte)
+type DisFunc func(index int64)
 
-type StServerInfo struct {
-	Index           int64
-	ServerIp        string
-	ServerPort      string
-	ThreadMode      int //1 use go   2 use threadpool
-	DisConnCallBack DisConnCallBackFun
-	ReadCallBack    ReadCallBackFun
-	OnlineMap       map[int64]net.Conn
+type NetCn struct {
+	index          int64
+	bServerService bool
+	ip             string
+	port           string
+	disCallBack    DisFunc
+	readCallBack   ReadFunc
+	onlineMap      map[int64]clientInfo
 }
 
-var stInfo StServerInfo
-
-func (arg *StServerInfo) AddOnlineInfo(val net.Conn) int64 {
-	arg.Index++
-	arg.OnlineMap[arg.Index] = val
-	return arg.Index
+func (this *NetCn) addOnlineNode(conn net.Conn) int64 {
+	this.index++
+	this.onlineMap[this.index] = clientInfo{
+		ConnId:      conn,
+		LastMsgTime: time.Now().Unix(),
+	}
+	return this.index
 }
 
-func (arg *StServerInfo) ReMoveOnlineInfo(conn net.Conn) {
-	for v, k := range arg.OnlineMap {
-		if k == conn {
-			delete(arg.OnlineMap, v)
+func (this *NetCn) removeOnlineNode(conn net.Conn) {
+	for k, v := range this.onlineMap {
+		if v.ConnId == conn {
+			conn.Close()
+			if nil != this.disCallBack {
+				this.disCallBack(k)
+			}
+			delete(this.onlineMap, k)
 			return
 		}
 	}
 }
 
-func (arg *StServerInfo) GetSocketId(key int64) (net.Conn, bool) {
-	val, ok := arg.OnlineMap[key]
-	return val, ok
+func (this *NetCn) getConnId(key int64) (net.Conn, bool) {
+	val, ok := this.onlineMap[key]
+	if ok {
+		return val.ConnId, ok
+	}
+	return nil, ok
 }
 
-func (arg *StServerInfo) Check() bool {
-	if arg.OnlineMap == nil || arg.ServerIp == "" || arg.ServerPort == "" || arg.DisConnCallBack == nil || arg.ReadCallBack == nil {
-		return false
-	}
-	return true
-}
-func (arg *StServerInfo) SetIpPort(ip, port string) bool {
-	if ip == "" || port == "" {
-		return false
-	}
-	arg.ServerIp = ip
-	arg.ServerPort = port
-	return true
-}
-
-func (arg *StServerInfo) SetCallDisConn(disconn DisConnCallBackFun) bool {
-	if disconn != nil {
-		arg.DisConnCallBack = disconn
-	} else {
+func (this *NetCn) checkParam() bool {
+	if this.onlineMap == nil || this.ip == "" || this.port == "" || this.disCallBack == nil || this.readCallBack == nil {
 		return false
 	}
 	return true
 }
 
-func (arg *StServerInfo) SetCallRead(read ReadCallBackFun) bool {
-	if read != nil {
-		arg.ReadCallBack = read
-	} else {
-		return false
-	}
-	return true
-}
-
-func init() {
-	fmt.Println("inti server")
-	stInfo = StServerInfo{
-		OnlineMap:  make(map[int64]net.Conn),
-		Index:      10241111,
-		ThreadMode: GoMode,
-	}
-}
-func SetIpPort(ip, port string) bool {
-	return stInfo.SetIpPort(ip, port)
-}
-
-func SetCallRead(callback ReadCallBackFun) bool {
-	return stInfo.SetCallRead(callback)
-}
-
-func SetCallDisConn(callback DisConnCallBackFun) bool {
-	return stInfo.SetCallDisConn(callback)
-}
-func SetThreadMode(Mode int) bool {
-	if Mode > PoolMode || Mode < GoMode {
-		return false
-	}
-	stInfo.ThreadMode = Mode
-	return true
-}
-
-func GoModeDoReadLoop(conn net.Conn, id int64) {
-	defer conn.Close()
+func (this *NetCn) doReadLoop(conn net.Conn, id int64) {
 	for {
-		res := DoRead(conn, id)
+		res := this.doRead(conn, id)
 		if !res {
 			break
 		}
 	}
-	stInfo.DisConnCallBack(id)
 	return
 }
-func ThreadModeReadLoop(arg interface{}) {
-	for k, v := range stInfo.OnlineMap {
-		v.SetReadDeadline(time.Now().Add(1 * time.Millisecond))
-		res := DoRead(v, k)
-		if !res {
-			v.Close()
-		}
-	}
-}
-func CloseSocket(socketid int64) {
-	v, ok := stInfo.OnlineMap[socketid]
+
+func (this *NetCn) CloseSocket(index int64) {
+	v, ok := this.onlineMap[index]
 	if ok {
-		delete(stInfo.OnlineMap, socketid)
-		v.Close()
+		this.removeOnlineNode(v.ConnId)
+		return
 	}
 	return
 }
-func readDataNum(conn net.Conn, msglen int) ([]byte, bool) {
-	if nil == conn || msglen == 0 {
+
+func (this *NetCn) readDataNum(conn net.Conn, msglen int) ([]byte, bool) {
+	if nil == conn || 0 == msglen {
 		return nil, false
 	}
 	nowlen := 0
 	info := make([]byte, msglen)
 	for msglen > nowlen {
 		len, err := conn.Read(info[nowlen:])
-		res := readWriteErr(err)
+		res := this.readWriteErr(err)
 		if res == 0 {
-			stInfo.ReMoveOnlineInfo(conn)
+			this.removeOnlineNode(conn)
 			return nil, false
 		}
 		nowlen += len
@@ -162,101 +116,153 @@ func readDataNum(conn net.Conn, msglen int) ([]byte, bool) {
 	return info, true
 }
 
-func DoRead(conn net.Conn, id int64) bool {
+func (this *NetCn) updateLastMsg(id int64) {
+	if !this.bServerService {
+		return
+	}
+	val, ok := this.onlineMap[id]
+	if ok {
+		val.LastMsgTime = time.Now().Unix()
+	}
+}
+func (this *NetCn) doRead(conn net.Conn, id int64) bool {
 	head := MsgHead{}
 	headlen := unsafe.Sizeof(head)
-	buf, ok := readDataNum(conn, int(headlen))
+	buf, ok := this.readDataNum(conn, int(headlen))
 	if !ok {
 		return false
 	}
-	/*
-		tempBytes := &SliceMock{
-			Addr: uintptr(unsafe.Pointer(&head)),
-			Len:  int(headlen),
-			Cap:  int(headlen),
-		}
-		data := *(*[]byte)(unsafe.Pointer(tempBytes))
-	*/
 	head = **(**MsgHead)(unsafe.Pointer(&buf))
-	if head.Len != 0 {
-		msgbuf, msgok := readDataNum(conn, head.Len)
+	this.updateLastMsg(id)
+	if head.BodyLen != 0 {
+		msgbuf, msgok := this.readDataNum(conn, head.BodyLen)
 		if !msgok {
 			fmt.Println("read data msg fail!!")
 			return false
 		} else {
-			stInfo.ReadCallBack(id, head, msgbuf)
+			this.readCallBack(id, head, msgbuf)
 			return true
 		}
+	} else if !this.bServerService && head.BHeartMsg {
+		this.sendHeartMsg(conn)
 	}
+	this.readCallBack(id, head, nil)
 	return true
 }
 
-func Write(id int64, msg []byte, serverid int, len int) bool {
-	val, ok := stInfo.GetSocketId(id)
+func (this *NetCn) checkOnline() {
+	for _, v := range this.onlineMap {
+		if v.LastMsgTime+10 < time.Now().Unix() {
+			this.removeOnlineNode(v.ConnId)
+		} else if v.LastMsgTime+5 < time.Now().Unix() {
+			this.sendHeartMsg(v.ConnId)
+		}
+	}
+	//use sleep replace ticker  do HeartBeat
+	time.Sleep(1 * time.Second)
+}
+func (this *NetCn) sendHeartMsg(conn net.Conn) {
 	head := MsgHead{
-		Len:        len,
-		ToServerId: serverid,
+		BodyLen:    0,
+		ToServerId: 1,
+		BHeartMsg:  true,
 	}
 	headlen := unsafe.Sizeof(head)
-	tempBytes := &commondef.SliceMock{
+	tempBytes := &FakeSlice{
 		addr: uintptr(unsafe.Pointer(&head)),
 		len:  int(headlen),
 		cap:  int(headlen),
 	}
 	wmsg := *(*[]byte)(unsafe.Pointer(tempBytes))
-	wmsg = append(wmsg, msg...)
-	if ok {
-		val.Write(wmsg)
-		return true
-	}
-	return false
-
+	conn.Write(wmsg)
+	return
 }
-func readWriteErr(err error) int {
+
+func (this *NetCn) readWriteErr(err error) int {
 	if nil != err {
 		if err.Error() == "EOF" {
-			fmt.Println("client closed")
+			fmt.Println("client closed!!!")
 			return 0
 		} else {
-			fmt.Println("err ", err.Error())
 			return -1
 		}
 	}
 	return 1
 }
 
-func StartServer() bool {
-	if !stInfo.Check() {
-		fmt.Println("server base info not init!!!")
+func (this *NetCn) startServer() bool {
+	if !this.checkParam() {
+		fmt.Println("base ifno not init!!")
 		return false
 	}
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", stInfo.ServerIp, stInfo.ServerPort))
+	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", this.ip, this.port))
 	if err != nil {
-		fmt.Println("lisetn fail!!", err)
+		fmt.Println("listen fail!!", err)
 		return false
 	}
+	go this.checkOnline()
 	for {
-		fmt.Println("start accept")
+		fmt.Println("start accept!!!")
 		conn, err := listener.Accept()
 		if err == nil {
-			id := stInfo.AddOnlineInfo(conn)
-			if stInfo.ThreadMode == GoMode {
-				go GoModeDoReadLoop(conn, id)
-				return true
-			} else {
-				//thread mode
-				job := commondef.StJobInfo{
-					RepeatTimes: -1,
-					Job:         ThreadModeReadLoop,
-				}
-				threadpool.AddTask(job)
-				return true
-			}
+			id := this.addOnlineNode(conn)
+			go this.doReadLoop(conn, id)
 		}
 	}
-	return false
+	return true
 }
 
-func StartClient() bool {
+func (this *NetCn) startClient() bool {
+	if !this.checkParam() {
+		fmt.Println("base ifno not init!!")
+		return false
+	}
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", this.ip, this.port))
+	if err != nil {
+		fmt.Println("Dial fail!!!", err)
+		return false
+	}
+	id := this.addOnlineNode(conn)
+	go this.doReadLoop(conn, id)
+	return true
+}
 
+func (this *NetCn) Write(id int64, msg []byte, serverid int, len int) bool {
+	val, ok := this.getConnId(id)
+	if !ok {
+		return false
+	}
+	head := MsgHead{
+		BodyLen:    len,
+		ToServerId: serverid,
+		BHeartMsg:  false,
+	}
+	headlen := unsafe.Sizeof(head)
+	tempBytes := &FakeSlice{
+		addr: uintptr(unsafe.Pointer(&head)),
+		len:  int(headlen),
+		cap:  int(headlen),
+	}
+	wmsg := *(*[]byte)(unsafe.Pointer(tempBytes))
+	if len != 0 {
+		wmsg = append(wmsg, msg...)
+	}
+	val.Write(wmsg)
+	return true
+}
+
+func (this *NetCn) CreateNetCn(ip, port string, disFun DisFunc, readFun ReadFunc, bServerService bool) {
+	this.bServerService = bServerService
+	this.disCallBack = disFun
+	this.readCallBack = readFun
+	this.ip = ip
+	this.port = port
+	this.index = 1024111
+	this.onlineMap = make(map[int64]clientInfo)
+}
+func (this *NetCn) Start() bool {
+	if this.bServerService {
+		return this.startServer()
+	}
+	return this.startClient()
 }

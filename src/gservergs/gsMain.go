@@ -12,6 +12,7 @@ import (
 )
 
 var ServerInfo commondef.StServerInfo
+var ServerService serverpart.NetCn
 
 func LoadConfig() {
 	ServerInfo.Ip = "47.106.141.213"
@@ -99,33 +100,35 @@ func StartGs() bool {
 		fmt.Println(res)
 	*/
 	/*
-		// threadpool test
-		t := test{
-			Id:   4,
-			Name: "huyi",
-		}
-		var arglist interface{} = t
-		job1 := commondef.StJobInfo{
-			RepeatTimes: 10,
-			Job:         Job1,
-			ArgList:     arglist,
-		}
-		job2 := commondef.StJobInfo{
-			RepeatTimes: 20,
-			Job:         Job2,
-		}
-		job3 := commondef.StJobInfo{
-			RepeatTimes: 5,
-			Job:         Job3,
-		}
-		threadpool.AddTask(job1)
-		threadpool.AddTask(job2)
-		threadpool.AddTask(job3)
+			// threadpool test
+			t := test{
+				Id:   4,
+				Name: "huyi",
+			}
+			var arglist interface{} = t
+			job1 := commondef.StJobInfo{
+				RepeatTimes: 10,
+				Job:         Job1,
+				ArgList:     arglist,
+			}
+			job2 := commondef.StJobInfo{
+				RepeatTimes: 20,
+				Job:         Job2,
+			}
+			job3 := commondef.StJobInfo{
+				RepeatTimes: 5,
+				Job:         Job3,
+			}
+			threadpool.AddTask(job1)
+			threadpool.AddTask(job2)
+			threadpool.AddTask(job3)
+		serverpart.SetCallDisConn(DisConn)
+		serverpart.SetCallRead(ReadData)
+		serverpart.SetIpPort("127.0.0.1", "8099")
+		serverpart.StartServer()
 	*/
-	serverpart.SetCallDisConn(DisConn)
-	serverpart.SetCallRead(ReadData)
-	serverpart.SetIpPort("127.0.0.1", "8099")
-	serverpart.StartServer()
+	ServerService.CreateNetCn("127.0.0.1", "8088", DisConn, ReadData, true)
+	ServerService.Start()
 	//	time.Sleep(10 * time.Second)
 	//threadpool.StopThreadPool()
 	return true
